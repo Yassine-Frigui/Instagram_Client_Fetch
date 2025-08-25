@@ -70,7 +70,9 @@ const Auth = ({ onLogin }) => {
           )}
           
           <div className="auth-info">
-            <small>Authorized users: {allowedNames.join(', ')}</small>
+            <small>Doesn't matter if you write your name in caps or not 
+              Example: "John", "john", "JOHN" are all valid
+            </small>
           </div>
         </div>
       </div>
