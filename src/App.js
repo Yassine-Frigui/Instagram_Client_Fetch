@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import './App.css';
 import Auth from './Auth';
 
@@ -67,7 +67,7 @@ const App = () => {
   };
 
   // Fetch existing links from Google Sheets
-  const fetchLinks = async () => {
+  const fetchLinks = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -118,7 +118,7 @@ const App = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [GOOGLE_APPS_SCRIPT_URL, SPREADSHEET_ID, API_KEY, RANGE]);
 
   // Add new link to Google Sheets
   const addLink = async () => {
@@ -250,7 +250,7 @@ const App = () => {
     if (user) {
       fetchLinks();
     }
-  }, [user]);
+  }, [user, fetchLinks]);
 
   // Clear message after 5 seconds
   useEffect(() => {
