@@ -11,6 +11,8 @@ const App = () => {
   const [user, setUser] = useState(null);
   const [bulkMode, setBulkMode] = useState(false);
   const [bulkProgress, setBulkProgress] = useState({ current: 0, total: 0 });
+  const [showRulesPopup, setShowRulesPopup] = useState(false);
+  const [activeTab, setActiveTab] = useState('overview');
 
   // Extract spreadsheet ID from environment variables
   const SPREADSHEET_ID = process.env.REACT_APP_SPREADSHEET_ID || '1eH3JlZBnmysQ0iGKwso4jir002s8E-ZvJmnim9p_ZKo';
@@ -24,6 +26,7 @@ const App = () => {
     const savedUser = localStorage.getItem('instagram-manager-user');
     if (savedUser) {
       setUser(savedUser);
+      setShowRulesPopup(true); // Show rules popup when user is already logged in
     }
   }, []);
 
@@ -31,6 +34,7 @@ const App = () => {
   const handleLogin = (name) => {
     setUser(name);
     localStorage.setItem('instagram-manager-user', name);
+    setShowRulesPopup(true); // Show rules popup when user logs in
   };
 
   // Handle logout
@@ -274,6 +278,12 @@ const App = () => {
             <p>Share and organize Instagram links with your team</p>
           </div>
           <div className="user-info">
+            <button 
+              onClick={() => setShowRulesPopup(true)}
+              className="rules-button"
+            >
+              View Rules
+            </button>
             <button onClick={handleLogout} className="logout-button">Logout</button>
           </div>
         </div>
@@ -406,6 +416,97 @@ const App = () => {
       <footer className="app-footer">
         <p>Powered by Google Sheets API | Built with React</p>
       </footer>
+
+      {/* Rules Popup */}
+      {showRulesPopup && (
+        <div className="popup-overlay" onClick={() => setShowRulesPopup(false)}>
+          <div className="popup-card" onClick={(e) => e.stopPropagation()}>
+            <div className="popup-header">
+              <h2>Instagram Link Fetching Rules</h2>
+              <button 
+                className="close-button"
+                onClick={() => setShowRulesPopup(false)}
+              >
+                ×
+              </button>
+            </div>
+            
+            <div className="popup-tabs">
+              <button 
+                className={`tab-button ${activeTab === 'overview' ? 'active' : ''}`}
+                onClick={() => setActiveTab('overview')}
+              >
+                Overview
+              </button>
+              <button 
+                className={`tab-button ${activeTab === 'business-types' ? 'active' : ''}`}
+                onClick={() => setActiveTab('business-types')}
+              >
+                Business Types
+              </button>
+            </div>
+
+            <div className="popup-content">
+              {activeTab === 'overview' && (
+                <div className="tab-content">
+                  <div className="rule-item">
+                    <h3>🎯 Goal</h3>
+                    <p>Identify Instagram accounts of businesses for outreach purposes.</p>
+                  </div>
+                  
+                  <div className="rule-item">
+                    <h3>✅ Key Criteria</h3>
+                    <ul>
+                      <li><strong>Active accounts only:</strong> Check their latest post , if they haven't posted in a long time , Don't copy it (6 months or more)</li>
+                      <li><strong>No functional website preferred:</strong>
+                        <ul>
+                          <li>If site is broken/unreachable → Keep the business</li>
+                          <li>If site is functional → Don't even copy it</li>
+                        </ul>
+                      </li>
+                    </ul>
+                  </div>
+
+                  <div className="rule-item">
+                    <h3>⚠️ Important Note</h3>
+                    <p><em>These business types are examples only. Get creative and discover other relevant businesses that fit the same spirit!</em></p>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'business-types' && (
+                <div className="tab-content">
+                  <div className="priority-section">
+                    <h4 className="high-priority">🔥 High Priority</h4>
+                    <ul>
+                      <li>Electronics stores</li>
+                      <li>Car rental services</li>
+                      <li>Travel agencies</li>
+                      <li>Gyms, pilates studios</li>
+                      <li>Unique/original items (candle shops, distinctive offerings)</li>
+                      <li>Bakeries, traiteurs, fine grocery stores (épiceries fines)</li>
+                      <li>Home décor and furniture stores</li>
+                    </ul>
+                  </div>
+
+                  <div className="priority-section">
+                    <h4 className="low-priority">📋 Low Priority</h4>
+                    <ul>
+                      <li>Clothing, shoes, accessories, cosmetics, perfumes stores</li>
+                      <li>Beauty industry: nail salons, eyelash services, makeup artists (large followings), spas, beauty centers, clinics</li>
+                      <li>Medical doctors (1k+ followers)</li>
+                      <li>Photographers, photography agencies, wedding/event planners</li>
+                      <li>Maisons de couture</li>
+                      <li>Pet stores, veterinary clinics</li>
+                      <li>Parapharmacies</li>
+                    </ul>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
