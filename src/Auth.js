@@ -17,7 +17,7 @@ const Auth = ({ onLogin }) => {
     const normalizedName = name.trim().toLowerCase();
     
     if (!allowedNames.includes(normalizedName)) {
-      setError(`Access denied. Allowed users: ${allowedNames.join(', ')}`);
+      setError(`Access denied. `);
       return;
     }
 
