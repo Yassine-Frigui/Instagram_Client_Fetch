@@ -198,6 +198,28 @@ body {
   font-size: 1.5rem;
 }
 
+.links-view-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 1rem;
+}
+
+.view-tab {
+  background: #101522;
+  color: #a9b3c1;
+  border: 1px solid #2a3046;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.view-tab.active {
+  background: #4B59F7;
+  color: #fff;
+  border-color: #4B59F7;
+}
+
 .loading {
   text-align: center;
   padding: 2rem;
@@ -236,6 +258,29 @@ body {
 
 .link-url {
   margin-bottom: 0.75rem;
+}
+
+.website-flag {
+  margin-top: 0.5rem;
+  display: flex;
+  align-items: center;
+}
+
+.website-flag input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin-right: 8px;
+}
+
+.website-flag span {
+  color: #a9b3c1;
+  font-size: 0.95rem;
+}
+
+.updating-indicator {
+  margin-left: 10px;
+  font-size: 0.85rem;
+  color: #ffc107;
 }
 
 .instagram-link {

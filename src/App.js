@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import './App.css';
 import Auth from './Auth';
 
@@ -13,13 +13,28 @@ const App = () => {
   const [bulkProgress, setBulkProgress] = useState({ current: 0, total: 0 });
   const [showRulesPopup, setShowRulesPopup] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
+  // Which links view to show: 'all' | 'noWebsite' | 'haveWebsite'
+  const [linksViewTab, setLinksViewTab] = useState('noWebsite');
+  // track per-link update state so toggling website flag doesn't block global UI
+  const [updatingWebsiteIds, setUpdatingWebsiteIds] = useState({});
+
+  // compute counts for tabs
+  const { totalCount, haveWebsiteCount, noWebsiteCount } = useMemo(() => {
+    const total = links.length;
+    let have = 0;
+    for (let i = 0; i < links.length; i++) {
+      if (links[i].have_website) have++;
+    }
+    return { totalCount: total, haveWebsiteCount: have, noWebsiteCount: total - have };
+  }, [links]);
 
   // Extract spreadsheet ID from environment variables
   const SPREADSHEET_ID = process.env.REACT_APP_SPREADSHEET_ID || '1eH3JlZBnmysQ0iGKwso4jir002s8E-ZvJmnim9p_ZKo';
   const API_KEY = process.env.REACT_APP_GOOGLE_API_KEY || 'AIzaSyA2NCwQONP2ceQyl-suUve-U44gkE2Tvtk';
   const GOOGLE_APPS_SCRIPT_URL = process.env.REACT_APP_GOOGLE_APPS_SCRIPT_URL;
   const SHEET_NAME = 'Sheet1';
-  const RANGE = `${SHEET_NAME}!A:C`;
+  // Include column D so the optional 'have_website' flag (4th column) is returned
+  const RANGE = `${SHEET_NAME}!A:D`;
 
   // Check for existing auth on mount
   useEffect(() => {
@@ -86,7 +101,8 @@ const App = () => {
               id: index,
               instagram_url: item.instagram_url || '',
               added_by: item.added_by || '',
-              date_added: item.date_added || ''
+              date_added: item.date_added || '',
+              have_website: ((item.have_website || '').toString().toLowerCase() === 'true' || (item.have_website || '').toString().toLowerCase() === 'yes' || (item.have_website || '').toString() === '1')
             })));
             return;
           }
@@ -112,7 +128,9 @@ const App = () => {
         id: index,
         instagram_url: row[0] || '',
         added_by: row[1] || '',
-        date_added: row[2] || ''
+        date_added: row[2] || '',
+        // Expect optional 4th column to flag website presence (TRUE/YES/1)
+        have_website: ((row[3] || '').toString().toLowerCase() === 'true' || (row[3] || '').toString().toLowerCase() === 'yes' || (row[3] || '').toString() === '1')
       }));
       
       setLinks(formattedLinks);
@@ -148,6 +166,56 @@ const App = () => {
     }
 
     await addSingleLink(normalizedUrl, user);
+  };
+
+  // Update website flag for a link (toggle)
+  const updateWebsiteStatus = async (linkId, currentStatus) => {
+    // Quick fail if no endpoint
+    if (!GOOGLE_APPS_SCRIPT_URL) {
+      setMessage('Google Apps Script URL not configured; cannot update website status.');
+      return;
+    }
+
+    const link = links.find(l => l.id === linkId);
+    if (!link) {
+      setMessage('Link not found');
+      return;
+    }
+
+    // Optimistic UI: update locally immediately and mark this row as updating
+    setLinks(prev => prev.map(l => l.id === linkId ? { ...l, have_website: !currentStatus } : l));
+    setUpdatingWebsiteIds(prev => ({ ...prev, [linkId]: true }));
+
+    try {
+      const params = new URLSearchParams({
+        action: 'update_website',
+        instagram_url: link.instagram_url,
+        have_website: (!currentStatus).toString()
+      });
+
+      const response = await fetch(`${GOOGLE_APPS_SCRIPT_URL}?${params.toString()}`);
+      if (!response.ok) throw new Error('Failed to update website status');
+      const result = await response.json();
+
+      if (!result.success) {
+        // revert optimistic update on failure
+        setLinks(prev => prev.map(l => l.id === linkId ? { ...l, have_website: currentStatus } : l));
+        setMessage(result.error || 'Update failed');
+      } else {
+        setMessage('Website status updated');
+      }
+    } catch (error) {
+      console.error('Error updating website status:', error);
+      // revert optimistic update
+      setLinks(prev => prev.map(l => l.id === linkId ? { ...l, have_website: currentStatus } : l));
+      setMessage('Failed to update website status.');
+    } finally {
+      setUpdatingWebsiteIds(prev => {
+        const copy = { ...prev };
+        delete copy[linkId];
+        return copy;
+      });
+    }
   };
 
   // Add bulk links
@@ -372,6 +440,11 @@ const App = () => {
 
         <div className="links-section">
           <h2>Shared Instagram Links ({links.length})</h2>
+          <div className="links-view-tabs">
+            <button className={`view-tab ${linksViewTab === 'noWebsite' ? 'active' : ''}`} onClick={() => setLinksViewTab('noWebsite')}>No Website ({noWebsiteCount})</button>
+            <button className={`view-tab ${linksViewTab === 'haveWebsite' ? 'active' : ''}`} onClick={() => setLinksViewTab('haveWebsite')}>Have Website ({haveWebsiteCount})</button>
+            <button className={`view-tab ${linksViewTab === 'all' ? 'active' : ''}`} onClick={() => setLinksViewTab('all')}>All ({totalCount})</button>
+          </div>
           {loading && links.length === 0 ? (
             <div className="loading">Loading links...</div>
           ) : links.length === 0 ? (
@@ -380,7 +453,13 @@ const App = () => {
             </div>
           ) : (
             <div className="links-grid">
-              {links.map((link) => (
+              {links
+                .filter(link => {
+                  if (linksViewTab === 'noWebsite') return !link.have_website;
+                  if (linksViewTab === 'haveWebsite') return !!link.have_website;
+                  return true;
+                })
+                .map((link) => (
                 <div key={link.id} className="link-card">
                   <div className="link-url">
                     <a 
@@ -395,6 +474,20 @@ const App = () => {
                   <div className="link-meta">
                     <span className="added-by">Added by: {link.added_by}</span>
                     <span className="date-added">Date: {link.date_added}</span>
+                  </div>
+                  <div className="website-flag">
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={!!link.have_website}
+                        disabled={!!updatingWebsiteIds[link.id]}
+                        onChange={() => updateWebsiteStatus(link.id, !!link.have_website)}
+                      />
+                      <span>Have website</span>
+                    </label>
+                    {updatingWebsiteIds[link.id] && (
+                      <span className="updating-indicator">Updating...</span>
+                    )}
                   </div>
                 </div>
               ))}
